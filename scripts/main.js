@@ -42,3 +42,13 @@ document.getElementById('clearBtn').addEventListener('click', () => {
     clearResult();
     saveToStorage();
 });
+
+function toggleLabels() {
+    graph_data.showDFSLabels = !graph_data.showDFSLabels;
+    draw();
+}
+
+const toggleBtn = document.getElementById('toggleLabelsBtn');
+const toggleBtnMobile = document.getElementById('toggleLabelsBtnMobile');
+if (toggleBtn) toggleBtn.addEventListener('click', toggleLabels);
+if (toggleBtnMobile) toggleBtnMobile.addEventListener('click', toggleLabels);

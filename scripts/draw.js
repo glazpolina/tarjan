@@ -67,6 +67,12 @@ function drawHighlighted() {
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         context.fillText(v.id, v.x, v.y);
+
+        if (graph_data.showDFSLabels && v.index !== undefined && v.lowlink !== undefined) {
+            context.font = '14px Arial';
+            context.fillStyle = 'rgb(0, 0, 0)';
+            context.fillText(`(${v.index},${v.lowlink})`, v.x, v.y + VERTEX_RADIUS + 12);
+        }
     }
 }
 
@@ -88,6 +94,12 @@ function drawVertex(v, selected, start, dragging) {
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillText(v.id, v.x, v.y);
+
+    if (graph_data.showDFSLabels && v.index !== undefined && v.lowlink !== undefined) {
+        context.font = '14px Arial';
+        context.fillStyle = 'rgb(0, 0, 0)';
+        context.fillText(`(${v.index},${v.lowlink})`, v.x, v.y + VERTEX_RADIUS + 12);
+    }
 }
 
 function drawArrow(from, to, selected) {

@@ -51,5 +51,11 @@ export function tarjan() {
             strongConnect(vertex.id);
         }
     }
+
+    for (const vertex of graph_data.vertices) {
+        vertex.index = index.get(vertex.id);
+        vertex.lowlink = lowlink.get(vertex.id);
+    }
+
     return components;
 }

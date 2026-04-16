@@ -10,7 +10,8 @@ export const graph_data = {
     selectionStart: null,
     selectionEnd: null,
     highlightActive: false,
-    componentColors: new Map()
+    componentColors: new Map(),
+    showDFSLabels: false
 };
 
 export const VERTEX_RADIUS = 20;

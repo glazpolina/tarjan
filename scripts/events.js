@@ -6,6 +6,10 @@ import { draw } from './draw.js';
 
 let canvas;
 let resultDiv;
+let multiSelectMode = false;
+let areaSelectMode = false;
+let longPressTimer = null;
+const LONG_PRESS_DURATION = 500;
 
 export function setupEvents(canvasEl, resultEl) {
     canvas = canvasEl;
@@ -15,6 +19,55 @@ export function setupEvents(canvasEl, resultEl) {
     canvas.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     window.addEventListener('keydown', onKeyDown);
+
+    const multiBtn = document.getElementById('multiSelectBtn');
+    const areaBtn = document.getElementById('areaSelectBtn');
+    const deleteSelBtn = document.getElementById('deleteSelectedBtn');
+    const deselectBtn = document.getElementById('deselectAllBtn');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+
+    if (multiBtn) {
+        multiBtn.addEventListener('click', () => {
+            multiSelectMode = !multiSelectMode;
+            multiBtn.classList.toggle('active', multiSelectMode);
+            areaSelectMode = false;
+            if (areaBtn) areaBtn.classList.remove('active');
+            showResult(multiSelectMode ? 'Выбор включён' : 'Выбор выключен');
+        });
+    }
+    if (areaBtn) {
+        areaBtn.addEventListener('click', () => {
+            areaSelectMode = !areaSelectMode;
+            areaBtn.classList.toggle('active', areaSelectMode);
+            multiSelectMode = false;
+            if (multiBtn) multiBtn.classList.remove('active');
+            showResult(areaSelectMode ? 'Выделение области включено' : 'Выделение области выключено');
+        });
+    }
+    if (deleteSelBtn) {
+        deleteSelBtn.addEventListener('click', () => {
+            deleteSelectedItems();
+        });
+    }
+    if (deselectBtn) {
+        deselectBtn.addEventListener('click', () => {
+            graph_data.selectedVertices.clear();
+            graph_data.selectedEdges.clear();
+            graph_data.selectedVertex = null;
+            draw();
+            showResult('Выделение снято');
+        });
+    }
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', () => {
+            graph_data.selectedVertices.clear();
+            graph_data.selectedEdges.clear();
+            graph_data.vertices.forEach(v => graph_data.selectedVertices.add(v.id));
+            graph_data.edges.forEach(e => graph_data.selectedEdges.add(`${e.from} -> ${e.to}`));
+            draw();
+            showResult('Выделены все элементы');
+        });
+    }
 }
 
 function getCoords(e) {
@@ -34,6 +87,27 @@ function onMouseDown(e) {
     const vertex = findVertexAt(x, y);
     const edge = vertex ? null : findEdgeAt(x, y);
 
+    if (areaSelectMode && e.button === 0) {
+        graph_data.isSelecting = true;
+        graph_data.selectionStart = { x, y };
+        graph_data.selectionEnd = { x, y };
+        draw();
+        return;
+    }
+
+    if (vertex && e.button === 0) {
+        longPressTimer = setTimeout(() => {
+            resetHighlightIfActive();
+            removeVertex(vertex.id);
+            draw();
+            saveToStorage();
+            showResult(`Удалена вершина ${vertex.id}`);
+            longPressTimer = null;
+        }, LONG_PRESS_DURATION);
+    }
+
+    const ctrlPressed = e.ctrlKey || e.metaKey || multiSelectMode;
+
     if (e.button === 0) {
         if (e.shiftKey) {
             graph_data.isSelecting = true;
@@ -42,6 +116,7 @@ function onMouseDown(e) {
             draw();
         } else if (vertex) {
             if (graph_data.selectedVertex !== null && graph_data.selectedVertex !== vertex.id) {
+                clearLongPressTimer();
                 resetHighlightIfActive();
                 const ok = addEdge(graph_data.selectedVertex, vertex.id);
                 showResult(ok ? `Добавлено ребро ${graph_data.selectedVertex} -> ${vertex.id}` : 'Ребро уже есть');
@@ -56,7 +131,7 @@ function onMouseDown(e) {
                 graph_data.selectedVertex = vertex.id;
             }
 
-            if (!e.ctrlKey && !e.metaKey && graph_data.selectedVertex === null) {
+            if (!ctrlPressed && graph_data.selectedVertex === null) {
                 graph_data.selectedVertices.clear();
                 graph_data.selectedEdges.clear();
             }
@@ -74,7 +149,8 @@ function onMouseDown(e) {
             canvas.style.cursor = 'grabbing';
             draw();
         } else if (edge) {
-            if (!e.ctrlKey && !e.metaKey) {
+            clearLongPressTimer();
+            if (!ctrlPressed) {
                 graph_data.selectedVertices.clear();
                 graph_data.selectedEdges.clear();
             }
@@ -88,6 +164,7 @@ function onMouseDown(e) {
             graph_data.selectedVertex = null;
             draw();
         } else {
+            clearLongPressTimer();
             resetHighlightIfActive();
             if (graph_data.selectedVertex !== null) {
                 graph_data.selectedVertex = null;
@@ -100,6 +177,7 @@ function onMouseDown(e) {
             saveToStorage();
         }
     } else if (e.button === 2 && vertex) {
+        clearLongPressTimer();
         resetHighlightIfActive();
         removeVertex(vertex.id);
         draw();
@@ -110,6 +188,7 @@ function onMouseDown(e) {
 function onMouseMove(e) {
     const { x, y } = getCoords(e);
     if (graph_data.draggingVertex) {
+        clearLongPressTimer();
         let newX = x + graph_data.dragOffset.x;
         let newY = y + graph_data.dragOffset.y;
         newX = clamp(newX, VERTEX_RADIUS, canvas.width - VERTEX_RADIUS);
@@ -124,6 +203,7 @@ function onMouseMove(e) {
 }
 
 function onMouseUp(e) {
+    clearLongPressTimer();
     if (graph_data.draggingVertex) {
         graph_data.draggingVertex = null;
         canvas.style.cursor = 'crosshair';
@@ -133,7 +213,8 @@ function onMouseUp(e) {
             const s = graph_data.selectionStart;
             const e = graph_data.selectionEnd;
             if (Math.abs(s.x - e.x) > 5 || Math.abs(s.y - e.y) > 5) {
-                if (!e.ctrlKey && !e.metaKey) {
+                const ctrlPressed = e.ctrlKey || e.metaKey || multiSelectMode;
+                if (!ctrlPressed) {
                     graph_data.selectedVertices.clear();
                     graph_data.selectedEdges.clear();
                 }
@@ -153,7 +234,7 @@ function onMouseUp(e) {
                         const mx = (from.x + to.x) / 2;
                         const my = (from.y + to.y) / 2;
                         if (mx >= minX && mx <= maxX && my >= minY && my <= maxY) {
-                            graph_data.selectedEdges.add(`${edge.from}->${edge.to}`);
+                            graph_data.selectedEdges.add(`${edge.from} -> ${edge.to}`);
                         }
                     }
                 });
@@ -173,24 +254,7 @@ function onKeyDown(e) {
         graph_data.selectedVertex = null;
         draw();
     } else if (e.key === 'Delete') {
-        resetHighlightIfActive();
-        const vCount = graph_data.selectedVertices.size;
-        const eCount = graph_data.selectedEdges.size;
-        if (vCount === 0 && eCount === 0) return;
-        for (let id of Array.from(graph_data.selectedVertices)) {
-            removeVertex(id);
-        }
-        for (let key of Array.from(graph_data.selectedEdges)) {
-            const [from, to] = key.split('->').map(Number);
-            const idx = graph_data.edges.findIndex(e => e.from === from && e.to === to);
-            if (idx !== -1) graph_data.edges.splice(idx, 1);
-        }
-        graph_data.selectedVertices.clear();
-        graph_data.selectedEdges.clear();
-        graph_data.selectedVertex = null;
-        draw();
-        saveToStorage();
-        //showResult(`Удалено ${vCount} вершин и ${eCount} рёбер`);
+        deleteSelectedItems();
     } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         graph_data.selectedVertices.clear();
@@ -198,6 +262,35 @@ function onKeyDown(e) {
         graph_data.vertices.forEach(v => graph_data.selectedVertices.add(v.id));
         graph_data.edges.forEach(e => graph_data.selectedEdges.add(`${e.from} -> ${e.to}`));
         draw();
+    }
+}
+
+function deleteSelectedItems() {
+    resetHighlightIfActive();
+    const vCount = graph_data.selectedVertices.size;
+    const eCount = graph_data.selectedEdges.size;
+    if (vCount === 0 && eCount === 0) return;
+
+    for (let id of Array.from(graph_data.selectedVertices)) {
+        removeVertex(id);
+    }
+    for (let key of Array.from(graph_data.selectedEdges)) {
+        const [from, to] = key.split('->').map(Number);
+        const idx = graph_data.edges.findIndex(e => e.from === from && e.to === to);
+        if (idx !== -1) graph_data.edges.splice(idx, 1);
+    }
+    graph_data.selectedVertices.clear();
+    graph_data.selectedEdges.clear();
+    graph_data.selectedVertex = null;
+    draw();
+    saveToStorage();
+    //showResult(`Удалено ${vCount} вершин и ${eCount} рёбер`);
+}
+
+function clearLongPressTimer() {
+    if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
     }
 }
 
