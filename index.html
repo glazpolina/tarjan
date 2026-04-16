@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Визуализация компонент сильной связности в ориентированных графах."
+    />
+    <title>Алгоритм Тарьяна</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles/reset.css" />
+    <link rel="stylesheet" href="styles/style.css" />
+  </head>
+  <body>
+    <canvas id="graphCanvas" width="800" height="500"></canvas>
+
+    <div class="btns">
+      <button id="runBtn">Найти компоненты</button>
+      <button id="clearBtn">Очистить</button>
+    </div>
+
+    <div class="result-box" id="resultArea">Нажмите «Найти компоненты»</div>
+
+    <div class="help-container">
+      <button id="helpBtn">Справка</button>
+      <div class="help-popup">
+        <ul>
+          <li><span class="key">Нажатие на поле</span> — добавление вершины</li>
+          <li>
+            <span class="key">Нажатие на вершину</span> — выбор вершины для
+            ребра
+          </li>
+          <li>
+            <span class="key">Нажатие на другую вершину</span> — создание ребра
+          </li>
+          <li>
+            <span class="key">Перетаскивание</span> — передвижение вершины
+          </li>
+          <li>
+            <span class="key">Shift+double tap+движение</span> — выделение
+            области
+          </li>
+          <li><span class="key">Ctrl+нажатие</span> — множественный выбор</li>
+          <li>
+            <span class="key">Правая кнопка мыши</span> — удаление вершины
+          </li>
+          <li><span class="key">Delete</span> — удаление выделенного</li>
+          <li><span class="key">Esc</span> — снятие выделения</li>
+          <li><span class="key">Ctrl+A</span> — выделить всё</li>
+        </ul>
+      </div>
+    </div>
+
+    <script type="module" src="scripts/main.js"></script>
+  </body>
+</html>
